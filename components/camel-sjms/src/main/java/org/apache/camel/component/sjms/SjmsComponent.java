@@ -18,6 +18,7 @@ package org.apache.camel.component.sjms;
 
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+
 import javax.jms.ConnectionFactory;
 
 import org.apache.camel.CamelException;
@@ -25,6 +26,7 @@ import org.apache.camel.Endpoint;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.component.sjms.jms.ConnectionFactoryResource;
 import org.apache.camel.component.sjms.jms.ConnectionResource;
+import org.apache.camel.component.sjms.jms.DestinationResolver;
 import org.apache.camel.component.sjms.jms.KeyFormatStrategy;
 import org.apache.camel.component.sjms.taskmanager.TimedTaskManager;
 import org.apache.camel.impl.UriEndpointComponent;
@@ -48,6 +50,7 @@ public class SjmsComponent extends UriEndpointComponent implements HeaderFilterS
     private TransactionCommitStrategy transactionCommitStrategy;
     private TimedTaskManager timedTaskManager;
     private ExecutorService asyncStartStopExecutorService;
+    private DestinationResolver destinationResolver;
 
     public SjmsComponent() {
         super(SjmsEndpoint.class);
@@ -65,13 +68,16 @@ public class SjmsComponent extends UriEndpointComponent implements HeaderFilterS
         if (transactionCommitStrategy != null) {
             endpoint.setTransactionCommitStrategy(transactionCommitStrategy);
         }
+        if (destinationResolver != null) {
+            endpoint.setDestinationResolver(destinationResolver);
+        }
         return endpoint;
     }
 
     /**
      * Helper method used to detect the type of endpoint and add the "queue"
      * protocol if it is a default endpoint URI.
-     *
+     * 
      * @param uri The value passed into our call to create an endpoint
      * @return String
      * @throws Exception
@@ -105,18 +111,18 @@ public class SjmsComponent extends UriEndpointComponent implements HeaderFilterS
      * are using the InOut MEP. If namedReplyTo is defined and the MEP is InOnly
      * the endpoint won't be expecting a reply so throw an error to alert the
      * user.
-     *
+     * 
      * @param parameters {@link Endpoint} parameters
      * @throws Exception throws a {@link CamelException} when MEP equals InOnly
-     *                   and namedReplyTo is defined.
+     *             and namedReplyTo is defined.
      */
     private static void validateMepAndReplyTo(Map<String, Object> parameters) throws Exception {
         boolean namedReplyToSet = parameters.containsKey("namedReplyTo");
         boolean mepSet = parameters.containsKey("exchangePattern");
         if (namedReplyToSet && mepSet) {
             if (!parameters.get("exchangePattern").equals(ExchangePattern.InOut.toString())) {
-                String namedReplyTo = (String) parameters.get("namedReplyTo");
-                ExchangePattern mep = ExchangePattern.valueOf((String) parameters.get("exchangePattern"));
+                String namedReplyTo = (String)parameters.get("namedReplyTo");
+                ExchangePattern mep = ExchangePattern.valueOf((String)parameters.get("exchangePattern"));
                 throw new CamelException("Setting parameter namedReplyTo=" + namedReplyTo + " requires a MEP of type InOut. Parameter exchangePattern is set to " + mep);
             }
         }
@@ -136,7 +142,7 @@ public class SjmsComponent extends UriEndpointComponent implements HeaderFilterS
             connections.fillPool();
             setConnectionResource(connections);
         } else if (getConnectionResource() instanceof ConnectionFactoryResource) {
-            ((ConnectionFactoryResource) getConnectionResource()).fillPool();
+            ((ConnectionFactoryResource)getConnectionResource()).fillPool();
         }
     }
 
@@ -148,7 +154,7 @@ public class SjmsComponent extends UriEndpointComponent implements HeaderFilterS
 
         if (getConnectionResource() != null) {
             if (getConnectionResource() instanceof ConnectionFactoryResource) {
-                ((ConnectionFactoryResource) getConnectionResource()).drainPool();
+                ((ConnectionFactoryResource)getConnectionResource()).drainPool();
             }
         }
         super.doStop();
@@ -165,8 +171,10 @@ public class SjmsComponent extends UriEndpointComponent implements HeaderFilterS
 
     protected synchronized ExecutorService getAsyncStartStopExecutorService() {
         if (asyncStartStopExecutorService == null) {
-            // use a cached thread pool for async start tasks as they can run for a while, and we need a dedicated thread
-            // for each task, and the thread pool will shrink when no more tasks running
+            // use a cached thread pool for async start tasks as they can run
+            // for a while, and we need a dedicated thread
+            // for each task, and the thread pool will shrink when no more tasks
+            // running
             asyncStartStopExecutorService = getCamelContext().getExecutorServiceManager().newCachedThreadPool(this, "AsyncStartStopListener");
         }
         return asyncStartStopExecutorService;
@@ -183,7 +191,7 @@ public class SjmsComponent extends UriEndpointComponent implements HeaderFilterS
     /**
      * Gets the ConnectionFactory value of connectionFactory for this instance
      * of SjmsComponent.
-     *
+     * 
      * @return the connectionFactory
      */
     public ConnectionFactory getConnectionFactory() {
@@ -225,9 +233,9 @@ public class SjmsComponent extends UriEndpointComponent implements HeaderFilterS
     }
 
     /**
-     * Gets the TransactionCommitStrategy value of transactionCommitStrategy for this
-     * instance of SjmsComponent.
-     *
+     * Gets the TransactionCommitStrategy value of transactionCommitStrategy for
+     * this instance of SjmsComponent.
+     * 
      * @return the transactionCommitStrategy
      */
     public TransactionCommitStrategy getTransactionCommitStrategy() {
@@ -235,8 +243,8 @@ public class SjmsComponent extends UriEndpointComponent implements HeaderFilterS
     }
 
     /**
-     * Sets the TransactionCommitStrategy value of transactionCommitStrategy for this
-     * instance of SjmsComponent.
+     * Sets the TransactionCommitStrategy value of transactionCommitStrategy for
+     * this instance of SjmsComponent.
      */
     public void setTransactionCommitStrategy(TransactionCommitStrategy commitStrategy) {
         this.transactionCommitStrategy = commitStrategy;
@@ -248,5 +256,13 @@ public class SjmsComponent extends UriEndpointComponent implements HeaderFilterS
 
     public void setTimedTaskManager(TimedTaskManager timedTaskManager) {
         this.timedTaskManager = timedTaskManager;
+    }
+
+    public DestinationResolver getDestinationResolver() {
+        return destinationResolver;
+    }
+
+    public void setDestinationResolver(DestinationResolver destinationResolver) {
+        this.destinationResolver = destinationResolver;
     }
 }

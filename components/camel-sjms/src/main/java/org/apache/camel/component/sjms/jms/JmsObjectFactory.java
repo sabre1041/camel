@@ -18,6 +18,7 @@ package org.apache.camel.component.sjms.jms;
 
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
+import javax.jms.JMSException;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
@@ -31,19 +32,19 @@ import org.apache.camel.util.ObjectHelper;
 public final class JmsObjectFactory {
 
     private JmsObjectFactory() {
-        //Helper class
+        // Helper class
     }
 
-    public static Destination createDestination(Session session, String destinationName, boolean topic) throws Exception {
+    public static Destination createDestination(Session session, String destinationName, DestinationResolver destinationResolver, boolean topic) throws Exception {
         if (topic) {
-            return createTopic(session, destinationName);
+            return createTopic(session, destinationName, destinationResolver);
         } else {
-            return createQueue(session, destinationName);
+            return createQueue(session, destinationName, destinationResolver);
         }
     }
 
-    public static Destination createQueue(Session session, String destinationName) throws Exception {
-        return session.createQueue(destinationName);
+    public static Destination createQueue(Session session, String destinationName, DestinationResolver destinationResolver) throws Exception {
+        return resolveDestination(session, destinationName, destinationResolver, false);
     }
 
     public static Destination createTemporaryDestination(Session session, boolean topic) throws Exception {
@@ -54,75 +55,51 @@ public final class JmsObjectFactory {
         }
     }
 
-    public static Destination createTopic(Session session, String destinationName) throws Exception {
-        return session.createTopic(destinationName);
+    public static Destination createTopic(Session session, String destinationName, DestinationResolver destinationResolver) throws Exception {
+        return resolveDestination(session, destinationName, destinationResolver, true);
     }
 
     public static MessageConsumer createQueueConsumer(Session session, String destinationName) throws Exception {
-        return createMessageConsumer(session, destinationName, null, false, null);
+        return createMessageConsumer(session, destinationName, null, null, false, null);
     }
 
     public static MessageConsumer createQueueConsumer(Session session, String destinationName, String messageSelector) throws Exception {
-        return createMessageConsumer(session, destinationName, messageSelector, false, null);
+        return createMessageConsumer(session, destinationName, null, messageSelector, false, null);
     }
 
     public static MessageConsumer createTopicConsumer(Session session, String destinationName, String messageSelector) throws Exception {
-        return createMessageConsumer(session, destinationName, messageSelector, true, null);
+        return createMessageConsumer(session, destinationName, null, messageSelector, true, null);
     }
 
-    public static MessageConsumer createTemporaryMessageConsumer(
-            Session session,
-            String messageSelector,
-            boolean topic,
-            String durableSubscriptionId,
-            boolean noLocal) throws Exception {
+    public static MessageConsumer createTemporaryMessageConsumer(Session session, String messageSelector, boolean topic, String durableSubscriptionId, boolean noLocal)
+        throws Exception {
         Destination destination = createTemporaryDestination(session, topic);
         return createMessageConsumer(session, destination, messageSelector, topic, durableSubscriptionId, noLocal);
     }
 
-    public static MessageConsumer createMessageConsumer(
-            Session session,
-            String destinationName,
-            String messageSelector,
-            boolean topic,
-            String durableSubscriptionId) throws Exception {
+    public static MessageConsumer createMessageConsumer(Session session, String destinationName, DestinationResolver destinationResolver, String messageSelector, boolean topic,
+                                                        String durableSubscriptionId) throws Exception {
         // noLocal is default false accordingly to JMS spec
-        return createMessageConsumer(session, destinationName, messageSelector, topic, durableSubscriptionId, false);
+        return createMessageConsumer(session, destinationName, destinationResolver, messageSelector, topic, durableSubscriptionId, false);
     }
 
-    public static MessageConsumer createMessageConsumer(
-            Session session,
-            String destinationName,
-            String messageSelector,
-            boolean topic,
-            String durableSubscriptionId,
-            boolean noLocal) throws Exception {
-        Destination destination = null;
-        if (topic) {
-            destination = session.createTopic(destinationName);
+    public static MessageConsumer createMessageConsumer(Session session, String destinationName, DestinationResolver destinationResolver, String messageSelector, boolean topic,
+                                                        String durableSubscriptionId, boolean noLocal) throws Exception {
+        Destination destination = resolveDestination(session, destinationName, destinationResolver, topic);
 
-        } else {
-            destination = session.createQueue(destinationName);
-        }
         return createMessageConsumer(session, destination, messageSelector, topic, durableSubscriptionId, noLocal);
     }
 
-    public static MessageConsumer createMessageConsumer(
-            Session session,
-            Destination destination,
-            String messageSelector,
-            boolean topic,
-            String durableSubscriptionId,
-            boolean noLocal) throws Exception {
+    public static MessageConsumer createMessageConsumer(Session session, Destination destination, String messageSelector, boolean topic, String durableSubscriptionId,
+                                                        boolean noLocal) throws Exception {
         MessageConsumer messageConsumer = null;
 
         if (topic) {
             if (ObjectHelper.isNotEmpty(durableSubscriptionId)) {
                 if (ObjectHelper.isNotEmpty(messageSelector)) {
-                    messageConsumer = session.createDurableSubscriber((Topic) destination, durableSubscriptionId,
-                            messageSelector, noLocal);
+                    messageConsumer = session.createDurableSubscriber((Topic)destination, durableSubscriptionId, messageSelector, noLocal);
                 } else {
-                    messageConsumer = session.createDurableSubscriber((Topic) destination, durableSubscriptionId);
+                    messageConsumer = session.createDurableSubscriber((Topic)destination, durableSubscriptionId);
                 }
             } else {
                 if (ObjectHelper.isNotEmpty(messageSelector)) {
@@ -141,37 +118,20 @@ public final class JmsObjectFactory {
         return messageConsumer;
     }
 
-    public static MessageProducer createQueueProducer(
-            Session session,
-            String destinationName) throws Exception {
-        return createMessageProducer(session, destinationName, false, true, -1);
+    public static MessageProducer createQueueProducer(Session session, String destinationName) throws Exception {
+        return createMessageProducer(session, destinationName, null, false, true, -1);
     }
 
-    public static MessageProducer createTopicProducer(
-            Session session,
-            String destinationName) throws Exception {
-        return createMessageProducer(session, destinationName, true, false, -1);
+    public static MessageProducer createTopicProducer(Session session, String destinationName) throws Exception {
+        return createMessageProducer(session, destinationName, null, true, false, -1);
     }
 
-    public static MessageProducer createMessageProducer(
-            Session session,
-            String destinationName,
-            boolean topic,
-            boolean persitent,
-            long ttl) throws Exception {
+    public static MessageProducer createMessageProducer(Session session, String destinationName, DestinationResolver destinationResolver, boolean topic, boolean persitent, long ttl)
+        throws Exception {
         MessageProducer messageProducer = null;
-        Destination destination = null;
-        if (topic) {
-            if (destinationName.startsWith("topic://")) {
-                destinationName = destinationName.substring("topic://".length());
-            }
-            destination = session.createTopic(destinationName);
-        } else {
-            if (destinationName.startsWith("queue://")) {
-                destinationName = destinationName.substring("queue://".length());
-            }
-            destination = session.createQueue(destinationName);
-        }
+
+        Destination destination = resolveDestination(session, destinationName, destinationResolver, topic);
+
         messageProducer = session.createProducer(destination);
 
         if (persitent) {
@@ -183,5 +143,30 @@ public final class JmsObjectFactory {
             messageProducer.setTimeToLive(ttl);
         }
         return messageProducer;
+    }
+
+    private static Destination resolveDestination(Session session, String destinationName, DestinationResolver destinationResolver, boolean topic) throws JMSException {
+        Destination destination = null;
+
+        if (topic) {
+            if (destinationName.startsWith("topic://")) {
+                destinationName = destinationName.substring("topic://".length());
+            }
+        } else {
+            if (destinationName.startsWith("queue://")) {
+                destinationName = destinationName.substring("queue://".length());
+            }
+        }
+
+        if (destinationResolver != null) {
+            destination = destinationResolver.resolveDestination(session, destinationName, topic);
+        } else {
+            if (topic) {
+                destination = session.createTopic(destinationName);
+            } else {
+                destination = session.createQueue(destinationName);
+            }
+        }
+        return destination;
     }
 }

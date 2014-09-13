@@ -84,7 +84,7 @@ public class InOutProducer extends SjmsProducer {
                 if (ObjectHelper.isEmpty(getNamedReplyTo())) {
                     replyToDestination = JmsObjectFactory.createTemporaryDestination(session, isTopic());
                 } else {
-                    replyToDestination = JmsObjectFactory.createDestination(session, getNamedReplyTo(), isTopic());
+                    replyToDestination = JmsObjectFactory.createDestination(session, getNamedReplyTo(), getDestinationResolver(), isTopic());
                 }
                 MessageConsumer messageConsumer = JmsObjectFactory.createMessageConsumer(session, replyToDestination, null, isTopic(), null, true);
                 messageConsumer.setMessageListener(new MessageListener() {
@@ -205,7 +205,7 @@ public class InOutProducer extends SjmsProducer {
                 session = conn.createSession(false, getAcknowledgeMode());
             }
 
-            messageProducer = JmsObjectFactory.createMessageProducer(session, getDestinationName(), isTopic(), isPersistent(), getTtl());
+            messageProducer = JmsObjectFactory.createMessageProducer(session, getDestinationName(), getDestinationResolver(), isTopic(), isPersistent(), getTtl());
 
             if (session == null) {
                 throw new CamelException("Message Consumer Creation Exception: Session is NULL");
@@ -290,9 +290,9 @@ public class InOutProducer extends SjmsProducer {
 
         if (exchange.getException() == null) {
             if (responseObject instanceof Throwable) {
-                exchange.setException((Throwable) responseObject);
+                exchange.setException((Throwable)responseObject);
             } else if (responseObject instanceof Message) {
-                Message response = (Message) responseObject;
+                Message response = (Message)responseObject;
                 SjmsExchangeMessageHelper.populateExchange(response, exchange, true);
             } else {
                 exchange.setException(new CamelException("Unknown response type: " + responseObject));

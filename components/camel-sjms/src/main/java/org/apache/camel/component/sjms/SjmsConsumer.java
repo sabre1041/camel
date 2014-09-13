@@ -18,6 +18,7 @@ package org.apache.camel.component.sjms;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+
 import javax.jms.Connection;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
@@ -31,6 +32,7 @@ import org.apache.camel.component.sjms.consumer.AbstractMessageHandler;
 import org.apache.camel.component.sjms.consumer.InOnlyMessageHandler;
 import org.apache.camel.component.sjms.consumer.InOutMessageHandler;
 import org.apache.camel.component.sjms.jms.ConnectionResource;
+import org.apache.camel.component.sjms.jms.DestinationResolver;
 import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.component.sjms.taskmanager.TimedTaskManager;
 import org.apache.camel.component.sjms.tx.BatchTransactionCommitStrategy;
@@ -52,13 +54,14 @@ public class SjmsConsumer extends DefaultConsumer {
     private Future<?> asyncStart;
 
     /**
-     * A pool of MessageConsumerResources created at the initialization of the associated consumer.
+     * A pool of MessageConsumerResources created at the initialization of the
+     * associated consumer.
      */
     protected class MessageConsumerResourcesFactory extends BasePoolableObjectFactory<MessageConsumerResources> {
 
         /**
          * Creates a new MessageConsumerResources instance.
-         *
+         * 
          * @see org.apache.commons.pool.PoolableObjectFactory#makeObject()
          */
         @Override
@@ -68,7 +71,7 @@ public class SjmsConsumer extends DefaultConsumer {
 
         /**
          * Cleans up the MessageConsumerResources.
-         *
+         * 
          * @see org.apache.commons.pool.PoolableObjectFactory#destroyObject(java.lang.Object)
          */
         @Override
@@ -79,7 +82,7 @@ public class SjmsConsumer extends DefaultConsumer {
                     model.getMessageConsumer().close();
                 }
 
-                // If the resource has a 
+                // If the resource has a
                 if (model.getSession() != null) {
                     if (model.getSession().getTransacted()) {
                         try {
@@ -100,7 +103,7 @@ public class SjmsConsumer extends DefaultConsumer {
 
     @Override
     public SjmsEndpoint getEndpoint() {
-        return (SjmsEndpoint) super.getEndpoint();
+        return (SjmsEndpoint)super.getEndpoint();
     }
 
     @Override
@@ -191,7 +194,8 @@ public class SjmsConsumer extends DefaultConsumer {
             } else {
                 session = conn.createSession(false, Session.AUTO_ACKNOWLEDGE);
             }
-            messageConsumer = JmsObjectFactory.createMessageConsumer(session, getDestinationName(), getMessageSelector(), isTopic(), getDurableSubscriptionId());
+            messageConsumer = JmsObjectFactory.createMessageConsumer(session, getDestinationName(), getDestinationResolver(), getMessageSelector(), isTopic(),
+                                                                     getDurableSubscriptionId());
             MessageListener handler = createMessageHandler(session);
             messageConsumer.setMessageListener(handler);
 
@@ -212,10 +216,9 @@ public class SjmsConsumer extends DefaultConsumer {
         return answer;
     }
 
-
     /**
      * Helper factory method used to create a MessageListener based on the MEP
-     *
+     * 
      * @param session a session is only required if we are a transacted consumer
      * @return the listener
      */
@@ -257,6 +260,7 @@ public class SjmsConsumer extends DefaultConsumer {
         messageHandler.setSynchronous(isSynchronous());
         messageHandler.setTransacted(isTransacted());
         messageHandler.setTopic(isTopic());
+        messageHandler.setDestinationResolver(getDestinationResolver());
         return messageHandler;
     }
 
@@ -270,7 +274,7 @@ public class SjmsConsumer extends DefaultConsumer {
 
     /**
      * Use to determine if transactions are enabled or disabled.
-     *
+     * 
      * @return true if transacted, otherwise false
      */
     public boolean isTransacted() {
@@ -279,7 +283,7 @@ public class SjmsConsumer extends DefaultConsumer {
 
     /**
      * Use to determine whether or not to process exchanges synchronously.
-     *
+     * 
      * @return true if synchronous
      */
     public boolean isSynchronous() {
@@ -288,7 +292,7 @@ public class SjmsConsumer extends DefaultConsumer {
 
     /**
      * The destination name for this consumer.
-     *
+     * 
      * @return String
      */
     public String getDestinationName() {
@@ -297,7 +301,7 @@ public class SjmsConsumer extends DefaultConsumer {
 
     /**
      * Returns the number of consumer listeners.
-     *
+     * 
      * @return the consumerCount
      */
     public int getConsumerCount() {
@@ -307,7 +311,7 @@ public class SjmsConsumer extends DefaultConsumer {
     /**
      * Flag set by the endpoint used by consumers and producers to determine if
      * the consumer is a JMS Topic.
-     *
+     * 
      * @return the topic true if consumer is a JMS Topic, default is false
      */
     public boolean isTopic() {
@@ -323,7 +327,7 @@ public class SjmsConsumer extends DefaultConsumer {
 
     /**
      * Gets the durable subscription Id.
-     *
+     * 
      * @return the durableSubscriptionId
      */
     public String getDurableSubscriptionId() {
@@ -332,7 +336,7 @@ public class SjmsConsumer extends DefaultConsumer {
 
     /**
      * Gets the commit strategy.
-     *
+     * 
      * @return the transactionCommitStrategy
      */
     public TransactionCommitStrategy getTransactionCommitStrategy() {
@@ -342,7 +346,7 @@ public class SjmsConsumer extends DefaultConsumer {
     /**
      * If transacted, returns the nubmer of messages to be processed before
      * committing the transaction.
-     *
+     * 
      * @return the transactionBatchCount
      */
     public int getTransactionBatchCount() {
@@ -351,10 +355,14 @@ public class SjmsConsumer extends DefaultConsumer {
 
     /**
      * Returns the timeout value for batch transactions.
-     *
+     * 
      * @return long
      */
     public long getTransactionBatchTimeout() {
         return getEndpoint().getTransactionBatchTimeout();
+    }
+
+    public DestinationResolver getDestinationResolver() {
+        return getEndpoint().getDestinationResolver();
     }
 }

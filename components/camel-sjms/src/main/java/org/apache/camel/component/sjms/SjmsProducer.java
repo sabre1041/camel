@@ -23,6 +23,7 @@ import org.apache.camel.AsyncCallback;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.component.sjms.jms.ConnectionResource;
+import org.apache.camel.component.sjms.jms.DestinationResolver;
 import org.apache.camel.impl.DefaultAsyncProducer;
 import org.apache.camel.util.ObjectHelper;
 import org.apache.commons.pool.BasePoolableObjectFactory;
@@ -353,6 +354,10 @@ public abstract class SjmsProducer extends DefaultAsyncProducer {
      */
     public TransactionCommitStrategy getCommitStrategy() {
         return getSjmsEndpoint().getTransactionCommitStrategy();
+    }
+
+    public DestinationResolver getDestinationResolver() {
+        return getSjmsEndpoint().getDestinationResolver();
     }
 
 }

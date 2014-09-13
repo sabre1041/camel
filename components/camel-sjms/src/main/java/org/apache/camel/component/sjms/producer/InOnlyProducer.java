@@ -70,7 +70,7 @@ public class InOnlyProducer extends SjmsProducer {
                 session = conn.createSession(false, getAcknowledgeMode());
             }
 
-            MessageProducer messageProducer = JmsObjectFactory.createMessageProducer(session, getDestinationName(), isTopic(), isPersistent(), getTtl());
+            MessageProducer messageProducer = JmsObjectFactory.createMessageProducer(session, getDestinationName(), getDestinationResolver(), isTopic(), isPersistent(), getTtl());
 
             answer = new MessageProducerResources(session, messageProducer, commitStrategy);
         } catch (Exception e) {
@@ -85,7 +85,8 @@ public class InOnlyProducer extends SjmsProducer {
 
     /*
      * @see
-     * org.apache.camel.component.sjms.SjmsProducer#sendMessage(org.apache.camel.Exchange, org.apache.camel.AsyncCallback)
+     * org.apache.camel.component.sjms.SjmsProducer#sendMessage(org.apache.camel
+     * .Exchange, org.apache.camel.AsyncCallback)
      * @param exchange
      * @param callback
      * @throws Exception
@@ -96,13 +97,13 @@ public class InOnlyProducer extends SjmsProducer {
             Collection<Message> messages = new ArrayList<Message>(1);
             if (exchange.getIn().getBody() != null) {
                 if (exchange.getIn().getBody() instanceof List) {
-                    Iterable<?> payload = (Iterable<?>) exchange.getIn().getBody();
+                    Iterable<?> payload = (Iterable<?>)exchange.getIn().getBody();
                     for (final Object object : payload) {
                         Message message;
                         if (BatchMessage.class.isInstance(object)) {
-                            BatchMessage<?> batchMessage = (BatchMessage<?>) object;
+                            BatchMessage<?> batchMessage = (BatchMessage<?>)object;
                             message = JmsMessageHelper.createMessage(producer.getSession(), batchMessage.getPayload(), batchMessage.getHeaders(), getSjmsEndpoint()
-                                    .getJmsKeyFormatStrategy());
+                                .getJmsKeyFormatStrategy());
                         } else {
                             message = JmsMessageHelper.createMessage(producer.getSession(), object, exchange.getIn().getHeaders(), getSjmsEndpoint().getJmsKeyFormatStrategy());
                         }
@@ -110,8 +111,7 @@ public class InOnlyProducer extends SjmsProducer {
                     }
                 } else {
                     Object payload = exchange.getIn().getBody();
-                    Message message = JmsMessageHelper
-                            .createMessage(producer.getSession(), payload, exchange.getIn().getHeaders(), getSjmsEndpoint().getJmsKeyFormatStrategy());
+                    Message message = JmsMessageHelper.createMessage(producer.getSession(), payload, exchange.getIn().getHeaders(), getSjmsEndpoint().getJmsKeyFormatStrategy());
                     messages.add(message);
                 }
             }

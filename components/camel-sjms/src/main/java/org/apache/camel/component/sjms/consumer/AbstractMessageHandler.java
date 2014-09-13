@@ -16,7 +16,10 @@
  */
 package org.apache.camel.component.sjms.consumer;
 
+import static org.apache.camel.util.ObjectHelper.wrapRuntimeCamelException;
+
 import java.util.concurrent.ExecutorService;
+
 import javax.jms.Message;
 import javax.jms.MessageListener;
 import javax.jms.Session;
@@ -27,12 +30,11 @@ import org.apache.camel.Exchange;
 import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.SjmsExchangeMessageHelper;
 import org.apache.camel.component.sjms.TransactionCommitStrategy;
+import org.apache.camel.component.sjms.jms.DestinationResolver;
 import org.apache.camel.impl.DefaultExchange;
 import org.apache.camel.spi.Synchronization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.camel.util.ObjectHelper.wrapRuntimeCamelException;
 
 /**
  * Abstract MessageListener
@@ -51,6 +53,7 @@ public abstract class AbstractMessageHandler implements MessageListener {
     private Synchronization synchronization;
     private boolean topic;
     private TransactionCommitStrategy commitStrategy;
+    private DestinationResolver destinationResolver;
 
     public AbstractMessageHandler(Endpoint endpoint, ExecutorService executor) {
         this.endpoint = endpoint;
@@ -172,5 +175,13 @@ public abstract class AbstractMessageHandler implements MessageListener {
 
     public TransactionCommitStrategy getCommitStrategy() {
         return commitStrategy;
+    }
+
+    public void setDestinationResolver(DestinationResolver destinationResolver) {
+        this.destinationResolver = destinationResolver;
+    }
+
+    public DestinationResolver getDestinationResolver() {
+        return destinationResolver;
     }
 }

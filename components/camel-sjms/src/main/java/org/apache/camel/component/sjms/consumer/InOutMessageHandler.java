@@ -63,9 +63,9 @@ public class InOutMessageHandler extends AbstractMessageHandler {
             if (obj != null) {
                 Destination replyTo = null;
                 if (isDestination(obj)) {
-                    replyTo = (Destination) obj;
+                    replyTo = (Destination)obj;
                 } else if (obj instanceof String) {
-                    replyTo = JmsObjectFactory.createDestination(getSession(), (String) obj, isTopic());
+                    replyTo = JmsObjectFactory.createDestination(getSession(), (String)obj, getDestinationResolver(), isTopic());
                 } else {
                     throw new Exception("The value of JMSReplyTo must be a valid Destination or String.  Value provided: " + obj);
                 }
@@ -140,9 +140,9 @@ public class InOutMessageHandler extends AbstractMessageHandler {
     private String getDestinationName(Destination destination) throws Exception {
         String answer = null;
         if (destination instanceof Queue) {
-            answer = ((Queue) destination).getQueueName();
+            answer = ((Queue)destination).getQueueName();
         } else if (destination instanceof Topic) {
-            answer = ((Topic) destination).getTopicName();
+            answer = ((Topic)destination).getTopicName();
         }
 
         return answer;
@@ -161,7 +161,7 @@ public class InOutMessageHandler extends AbstractMessageHandler {
         @Override
         public void done(boolean sync) {
             try {
-                Message response = SjmsExchangeMessageHelper.createMessage(exchange, getSession(), ((SjmsEndpoint) getEndpoint()).getJmsKeyFormatStrategy());
+                Message response = SjmsExchangeMessageHelper.createMessage(exchange, getSession(), ((SjmsEndpoint)getEndpoint()).getJmsKeyFormatStrategy());
                 response.setJMSCorrelationID(exchange.getIn().getHeader("JMSCorrelationID", String.class));
                 localProducer.send(response);
             } catch (Exception e) {
